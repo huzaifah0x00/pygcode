@@ -1,9 +1,10 @@
+import time
 import re
 from copy import copy, deepcopy
 from collections import defaultdict
 
 from .gcodes import (
-    MODAL_GROUP_MAP, GCode,
+    GCodeAbsoluteDistanceMode, MODAL_GROUP_MAP, GCode,
     # Modal GCodes
     GCodeMotion,
     GCodeIncrementalDistanceMode,
@@ -283,6 +284,7 @@ class Mode(object):
         M5      (spindle: off)
         M9      (coolant: off)
         F0      (feed_rate: 0)
+        E0      (extrude: 0)
         S0      (spindle_speed: 0)
         T0      (tool: 0)
     '''
@@ -388,6 +390,9 @@ class Machine(object):
         # Machine's motion range (min/max corners of a bounding box)
         self.abs_range_min = copy(self.abs_pos)
         self.abs_range_max = copy(self.abs_pos)
+
+        self.total_extruded = 0.0  # Units ?
+        self.extrusion_offset = 0.0
 
     def __copy__(self):
         obj = self.__class__()
@@ -545,6 +550,9 @@ class Machine(object):
         self.abs_range_min = Position.min(pos, self.abs_range_min)
         self.abs_range_max = Position.max(pos, self.abs_range_max)
 
+    def set_extrusion_offset(self, newoffset):
+        self.extrusion_offset = newoffset
+
     # =================== Machine Actions ===================
     def move_to(self, rapid=False, **coords):
         """Move machine to given position"""
@@ -555,6 +563,19 @@ class Machine(object):
             new_pos = self.pos
             new_pos.update(**coords)  # only change given coordinates
             self.pos = new_pos
+
+        absolute_extrusion = True
+
+        if absolute_extrusion:
+            current_extrusion = coords.get('E', 0.0)
+            self.total_extruded = current_extrusion + self.extrusion_offset
+
+        # if coords.get('E', 0.0) != 0.0:
+        #     print(f"current_extrusion: {current_extrusion}")
+
+        #     # print(f"new_extrusion: {new_extrusion}")
+        #     print(f"coords: {coords}")
+        #     print(f"self.total_extruded: {self.total_extruded}")
 
 
 # Null Machine

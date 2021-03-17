@@ -396,12 +396,12 @@ class GCodeProgramName(GCodeDefinition):
 # G80                           Cancel Canned Cycle
 
 class GCodeMotion(GCode):
-    param_letters = set('XYZABCUVW')
+    param_letters = set('XYZEABCUVW')
     modal_group = MODAL_GROUP_MAP['motion']
     exec_order = 242
 
     def _process(self, machine):
-        machine.move_to(**self.get_param_dict(letters=machine.axes))
+        machine.move_to(**self.get_param_dict(letters=set([*machine.axes, "E"])))
 
 
 class GCodeRapidMove(GCodeMotion):
@@ -409,7 +409,7 @@ class GCodeRapidMove(GCodeMotion):
     word_key = Word('G', 0)
 
     def _process(self, machine):
-        machine.move_to(rapid=True, **self.get_param_dict(letters=machine.axes))
+        machine.move_to(rapid=True, **self.get_param_dict(letters=set([*machine.axes, "E"])))
 
 
 class GCodeLinearMove(GCodeMotion):
@@ -1323,9 +1323,14 @@ class GCodeMoveInMachineCoords(GCodeNonModal):
 
 class GCodeCoordSystemOffset(GCodeNonModal):
     """G92: Coordinate System Offset"""
+    param_letters = set('XYZE')
     word_key = Word('G', 92)
     exec_order = 230
 
+    def _process(self, machine):
+        # FIXME: This is very bad for architecture... we should do something with machine.state.offset
+        new_e_value = self.get_param_dict(letters=self.param_letters)["E"]
+        machine.extrusion_offset += machine.total_extruded + new_e_value
 
 class GCodeResetCoordSystemOffset(GCodeNonModal):
     """G92.1,G92.2: Reset Coordinate System Offset"""

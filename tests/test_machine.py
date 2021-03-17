@@ -9,7 +9,7 @@ from pygcode.machine import Position, Machine
 from pygcode.line import Line
 from pygcode.exceptions import MachineInvalidAxis
 from pygcode.gcodes import (
-    GCodeAbsoluteDistanceMode, GCodeIncrementalDistanceMode,
+    GCodeAbsoluteDistanceMode, GCodeCoordSystemOffset, GCodeIncrementalDistanceMode,
     GCodeAbsoluteArcDistanceMode, GCodeIncrementalArcDistanceMode,
     GCodeCannedCycleReturnPrevLevel, GCodeCannedCycleReturnToR,
 )
@@ -190,6 +190,45 @@ class MachineGCodeProcessingTests(unittest.TestCase):
             ('   y-10 i5 j-5', {'X':0, 'Y':0}),
         ]
         self.assert_processed_lines(line_data, m)
+
+    # Linearly Interpolated Movement
+    def test_linear_extrude_abs(self):
+        m = Machine()
+        m.process_gcodes(GCodeCoordSystemOffset(**dict(E=0)))
+        # G0 X25 Y25.00 E200
+        # G0 X25 Y25.00 E200
+
+        # G92 E0
+        # G0 X25 Y25.00 E200
+
+        line_data = [
+            ('g1 x0 y10 E20',       {'X':0, 'Y':10,}),
+            ('   x10 y10 E40',      {'X':10, 'Y':10}),
+        ]
+
+        self.assert_processed_lines(line_data, m)
+        self.assertEqual(m.total_extruded, 40)
+        m.process_gcodes(GCodeCoordSystemOffset(**dict(E=0)))
+
+        line_data = [
+            ('g1 x0 y10 E10',       {'X':0, 'Y':10}),
+            ('   x10 y10 E30',      {'X':10, 'Y':10}),
+        ]
+
+        self.assert_processed_lines(line_data, m)
+        self.assertEqual(m.total_extruded, 70)
+
+    def test_linear_extrude_inc(self):
+        m = Machine()
+        m.process_gcodes(GCodeIncrementalDistanceMode())
+        line_data = [
+            ('g1 y10 E20',  {'X':0, 'Y':10}),
+            ('   x10',  {'X':10, 'Y':10}),
+            ('   y-10', {'X':10, 'Y':0}),
+            ('   x-10', {'X':0, 'Y':0}),
+        ]
+        self.assert_processed_lines(line_data, m)
+        self.assertEqual(m.total_extruded, 20)
 
     # Canned Drilling Cycles
     def test_canned_return2oldz(self):

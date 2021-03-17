@@ -212,5 +212,13 @@ WORD_MAP = {
     ),
 }
 
+# FIXME: temporary overwrite until we have dialects
+WORD_MAP["E"] = WordType(
+    cls=float,
+    value_regex=REGEX_FLOAT,
+    description="The amount to extrude between the starting point and ending point",
+    clean_value=CLEAN_FLOAT,
+)
+
 
 # ======================== G-CODES ========================
